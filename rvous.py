@@ -2,6 +2,7 @@ import sys
 import socket 
 import threading
 import os
+import re
 
 DEFAULT_PORT = 60000
 
@@ -40,15 +41,19 @@ def extract_data():
 
 def main():
     try:
-        peer = []
+        waiting_peer = []
+        inactive_peer = []
+
         port = process_args()
         sock = get_socket(port)
 
         while True:
-            data, address = sock.recvfrom(port)
+            data = sock.recv(port)
             print("*** Received Message")
-            print("Client: ", address)
-            
+            top,host,cport = re.split(':', data.decode())
+            recvd_peer = Peer(topology=top, hostname=host, port=int(cport))
+            recvd_peer.print_info()
+            waiting_peer.append(recvd_peer)
 
     except KeyboardInterrupt:
         sys.exit()

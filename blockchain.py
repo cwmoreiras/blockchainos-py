@@ -11,6 +11,7 @@ import time
 import struct
 import hashlib
 import socket
+import re
 
 DEFAULT_PORT = 60000
 
@@ -189,7 +190,7 @@ class Blockchain:
 
 def get_public_ip():
     print("Running STUN test")
-    return pynat.get_ip_info()
+    return pynat.get_ip_info() # arbitrary public stun server
 
 def parse_args():
     argc = len(sys.argv)
@@ -225,25 +226,36 @@ def create_test_chain():
     bc.verify_block(old_block=root_block, new_block=new_block)
     bc.verify_chain()
 
+    return bc
+
 def main():
 
     try:
+        peer = []
         rvous_host,rvous_port = parse_args()
         print("RVOUS host: ", rvous_host)
         print("RVOUS port: ", rvous_port)
 
-        create_test_chain()
-        nat_top, extern_ip, extern_port = get_public_ip()
-        peer = Peer(nat_top, extern_ip, extern_port)
-        peer.print_info()
+        chain = create_test_chain()
+        nat_top, extern_ip, extern_port = get_public_ip() # why does this take so long?
+        this_peer = Peer(nat_top, extern_ip, extern_port)
+        this_peer.print_info()
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-        pstr = peer.topology + peer.hostname + str(peer.port) # concat
-        sock.sendto(bytes(pstr, 'utf-8'), (rvous_host,rvous_port))
-
         # store the network data in Peer object
         print("Sending network info to rendezvous server")
+        pstr = this_peer.topology + ':' + this_peer.hostname + ':' + str(this_peer.port) # concat
+        sock.sendto(bytes(pstr, 'utf-8'), (rvous_host,rvous_port))
+
+        print("Awaiting peer host info")
+        data = sock.recv(this_peer.port)
+        top,host,pport = re.split(':', data.decode())
+        recvd_peer = Peer(topology=top, hostname=host, port=int(pport))
+        peer.append(recvd_peer)
+        
+
+
     except KeyboardInterrupt:
         sys.exit()
     else:
