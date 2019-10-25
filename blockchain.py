@@ -9,8 +9,21 @@ import pynat
 import sys
 import time
 import struct
-from hashlib import sha256
-import peer
+import hashlib
+import socket
+
+DEFAULT_PORT = 60000
+
+class Peer():
+    def __init__(self, topology="", hostname="", port=0):
+        self.topology=topology
+        self.hostname=hostname 
+        self.port=port
+
+    def print_info(self):
+        print("NAT Topology: ", self.topology)
+        print("IP Address  : ", self.hostname)
+        print("Port Number : ", self.port)
 
 '''
 Description
@@ -70,7 +83,7 @@ class _Block:
             ph = int(self.prevhash.hexdigest(), 16)
             ph &= 0x7FFFFFFF # make it 4 bytes
 
-        return sha256(struct.pack("I", r + ph + self.index + self.timestamp))
+        return hashlib.sha256(struct.pack("I", r + ph + self.index + self.timestamp))
 
 '''
  Description
@@ -183,11 +196,17 @@ def parse_args():
     argv = sys.argv 
 
     # TODO help menu for the user
-    if argc > 1:
+    if argc == 1:
+        raise TypeError("Malformed args: need RVOUS server hostname and port")
+    elif argc == 2:
         if argv[1] == "-h" or argv[1] == "--help":
-            print("Help menu has not been implemented")
-    elif argc > 1:
-        print("Command line argument is malformed")
+            raise NotImplementedError("help flag")
+        else:
+            return argv[1].strip(),DEFAULT_PORT
+
+    elif argc == 3:
+        return argv[1].strip(),int(argv[2].strip())
+            
 
 def create_test_chain():
     print("Constructing blockchain")
@@ -199,6 +218,7 @@ def create_test_chain():
 
     print("Inserting new record")
     bc.append(record="hello world")
+    print("Getting most recent hash")
     new_block = bc.peek()
     print(new_block.hash.hexdigest())
 
@@ -208,19 +228,22 @@ def create_test_chain():
 def main():
 
     try:
-        parse_args()
+        rvous_host,rvous_port = parse_args()
+        print("RVOUS host: ", rvous_host)
+        print("RVOUS port: ", rvous_port)
+
         create_test_chain()
         nat_top, extern_ip, extern_port = get_public_ip()
         peer = Peer(nat_top, extern_ip, extern_port)
+        peer.print_info()
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+        pstr = peer.topology + peer.hostname + str(peer.port) # concat
+        sock.sendto(bytes(pstr, 'utf-8'), (rvous_host,rvous_port))
 
         # store the network data in Peer object
         print("Sending network info to rendezvous server")
-
-
-
-
-
-
     except KeyboardInterrupt:
         sys.exit()
     else:
