@@ -13,7 +13,7 @@ import hashlib
 import socket
 import os
 sys.path.append(os.getcwd()) # TODO hack
-from comm import *
+import comm
 
 '''
 Description
@@ -188,7 +188,7 @@ def parse_args():
         if argv[1] == "-h" or argv[1] == "--help":
             raise NotImplementedError("help flag")
         else:
-            return argv[1].strip(),DEFAULT_SOURCE_PORT
+            return argv[1].strip(),comm.DEFAULT_SOURCE_PORT
 
     elif argc == 3:
         return argv[1].strip(),int(argv[2].strip())
@@ -213,7 +213,7 @@ def create_test_chain():
 
     return bc
 
-def get_host_info(source_port=DEFAULT_SOURCE_PORT):
+def get_host_info(source_port=comm.DEFAULT_SOURCE_PORT):
     print("Running STUN test")
     return pynat.get_ip_info(source_port=source_port) # arbitrary public stun server
 
@@ -230,27 +230,28 @@ def main():
         peer = []
         rvous_host,source_port = parse_args()
         print("RVOUS host: ", rvous_host)
-        print("RVOUS port: ", DEFAULT_RVOUS_PORT)
+        print("RVOUS port: ", comm.DEFAULT_RVOUS_PORT)
         print("source port: ", source_port)
 
         chain = create_test_chain()
         nat_top, extern_ip, extern_port = get_host_info(source_port=source_port) # why does this take so long?
-        this_node = Peer(nat_top, extern_ip, extern_port)
+        this_node = comm.Peer(nat_top, extern_ip, extern_port)
         this_node.print_info()
 
-        sock = get_udp_socket(source_port=source_port)
+        sock = comm.get_udp_socket(source_port=source_port)
 
-        packet = encode_packet(pack_type=PacketType.CLIENT_MSG, peers=this_node.encode(), npeers=1)
+        packet = comm.encode_packet(pack_type=comm.PacketType.CLIENT_MSG, peers=[this_node], npeers=1)
 
         # store the network data in Peer object
         print("Sending network info to rendezvous server")
-        sock.sendto(packet, (rvous_host,DEFAULT_RVOUS_PORT))
+        sock.sendto(packet, (rvous_host,comm.DEFAULT_RVOUS_PORT))
 
         print("Awaiting peer host info") # from either rvous or another peer
         packet = sock.recv(this_node.port)
         print(packet)
-        pack_type,npeers,peers = decode_packet(packet)
-        print("Received packet of type", PacketType(pack_type).name)
+        
+        pack_type,npeers,peers = comm.decode_packet(packet)
+        print("Received packet of type", comm.PacketType(pack_type).name)
         print("Received address for", npeers, "peers")
         for peer in peers:
             peer.print_info()

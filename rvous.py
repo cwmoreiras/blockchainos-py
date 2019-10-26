@@ -5,7 +5,6 @@ import os
 import re
 import random
 from itertools import repeat
-sys.path.append(os.getcwd()) # TODO hack
 import comm
 
 DEFAULT_RVOUS_PORT = 60000
@@ -59,25 +58,36 @@ def main():
         active = []
 
         port = process_args()
+
+        print("Starting server at port", port)
         sock = comm.get_udp_socket(port)
 
         while True:
-            packet = comm.decode_packet(sock.recv(port))
-            print(packet)
-
-            # waiting.append(recvd)
-            looking = len(waiting)-1 # index of newest waiting peer
-
-            # select up to n peers from the active peer list to send to the client
-            # or as many as we have
-
-            peers = select_peers(looking=looking, active=active, waiting=waiting, n_wanted=5)
+            pack_type,npeers,peers = comm.decode_packet(sock.recv(port))
+            print("*******************************************")
+            print("Received request")
+            print("PacketType:", pack_type.name)
+            print("npeers:    ", npeers)
             for peer in peers:
                 peer.print_info()
-                
-            if peers:
-                packet = construct_packet(pack_type=PacketType.RVOUS_MSG, peers=peers, npeers=len(peers))
-                sock.sendto(packet, (recvd.hostname, recvd.port))
+
+            if pack_type == comm.PacketType.CLIENT_MSG:
+                client = peers[0]
+                waiting.append(client)
+                looking = len(waiting)-1 # index of newest client
+                peers = select_peers(looking=looking, active=active, waiting=waiting, n_wanted=5)
+                    
+                for peer in peers:
+                    peer.print_info()
+
+                if peers:
+                    packet = comm.encode_packet(pack_type=comm.PacketType.RVOUS_MSG, peers=peers, npeers=len(peers))
+                    print("Sending peer list to", client.hostname)
+                    sock.sendto(packet, (client.hostname, client.port))
+                else:
+                    print("No available peers for this client")
+            else:
+                print("Received invalid request")              
             
     except KeyboardInterrupt:
         sys.exit()
