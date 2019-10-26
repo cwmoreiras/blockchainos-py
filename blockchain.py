@@ -13,13 +13,18 @@ import hashlib
 import socket
 import re
 
-DEFAULT_PORT = 60000
+DEFAULT_RVOUS_PORT = 60000
+DEFAULT_SOURCE_PORT = 54320
+
 
 class Peer():
     def __init__(self, topology="", hostname="", port=0):
         self.topology=topology
         self.hostname=hostname 
         self.port=port
+
+    def encode(self):
+        return self.topology + ';' + self.hostname + ';' + str(self.port)
 
     def print_info(self):
         print("NAT Topology: ", self.topology)
@@ -188,9 +193,9 @@ class Blockchain:
         print("Blockchain Verification: Passed all tests")
         return -1
 
-def get_public_ip():
+def get_public_ip(source_port=54320):
     print("Running STUN test")
-    return pynat.get_ip_info() # arbitrary public stun server
+    return pynat.get_ip_info(source_port=source_port) # arbitrary public stun server
 
 def parse_args():
     argc = len(sys.argv)
@@ -198,12 +203,12 @@ def parse_args():
 
     # TODO help menu for the user
     if argc == 1:
-        raise TypeError("Malformed args: need RVOUS server hostname and port")
+        raise TypeError("Malformed args: need RVOUS server hostname and source port")
     elif argc == 2:
         if argv[1] == "-h" or argv[1] == "--help":
             raise NotImplementedError("help flag")
         else:
-            return argv[1].strip(),DEFAULT_PORT
+            return argv[1].strip(),DEFAULT_SOURCE_PORT
 
     elif argc == 3:
         return argv[1].strip(),int(argv[2].strip())
@@ -228,32 +233,46 @@ def create_test_chain():
 
     return bc
 
+def decode_rvous_msg(packet=None):
+    peers = []
+    npeers = int(re.split(';', packet.decode('utf-8'))[0])
+    print("npeers: ", npeers)
+    p_info = re.split(';', packet.decode('utf-8'))[1:3*npeers+1]
+    
+    for i in range(npeers):
+        peers.append(Peer(p_info[i*3], p_info[i*3+1], p_info[i*3+2]))
+
+    return npeers,peers
+
 def main():
 
     try:
         peer = []
-        rvous_host,rvous_port = parse_args()
+        rvous_host,source_port = parse_args()
         print("RVOUS host: ", rvous_host)
-        print("RVOUS port: ", rvous_port)
+        print("RVOUS port: ", DEFAULT_RVOUS_PORT)
+        print("source port: ", source_port)
 
         chain = create_test_chain()
-        nat_top, extern_ip, extern_port = get_public_ip() # why does this take so long?
+        nat_top, extern_ip, extern_port = get_public_ip(source_port=source_port) # why does this take so long?
         this_peer = Peer(nat_top, extern_ip, extern_port)
         this_peer.print_info()
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(("0.0.0.0", source_port))
 
         # store the network data in Peer object
         print("Sending network info to rendezvous server")
-        pstr = this_peer.topology + ':' + this_peer.hostname + ':' + str(this_peer.port) # concat
-        sock.sendto(bytes(pstr, 'utf-8'), (rvous_host,rvous_port))
+        sock.sendto(bytes(this_peer.encode(), 'utf-8'), (rvous_host,DEFAULT_RVOUS_PORT))
 
         print("Awaiting peer host info")
-        data = sock.recv(this_peer.port)
-        top,host,pport = re.split(':', data.decode())
-        recvd_peer = Peer(topology=top, hostname=host, port=int(pport))
-        peer.append(recvd_peer)
-        
+        packet = sock.recv(this_peer.port)
+        npeers,peers = decode_rvous_msg(packet)
+        print("Received address for", npeers, "peers")
+        for peer in peers:
+            peer.print_info()
+                
 
 
     except KeyboardInterrupt:
