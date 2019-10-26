@@ -11,7 +11,7 @@ import time
 import struct
 import hashlib
 import socket
-import re
+import os
 sys.path.append(os.getcwd()) # TODO hack
 from comm import *
 
@@ -245,8 +245,9 @@ def main():
 
         print("Awaiting peer host info") # from either rvous or another peer
         packet = sock.recv(this_node.port)
+        print(packet)
         pack_type,npeers,peers = decode_packet(packet)
-        print("Received packed of type", pack_type.name)
+        print("Received packet of type", PacketType(pack_type).name)
         print("Received address for", npeers, "peers")
         for peer in peers:
             peer.print_info()

@@ -47,7 +47,7 @@ def extract_data(data=""):
     return Peer(topology=top, hostname=host, port=int(cport))
 
 def construct_packet(pack_type=PacketType.INVALID, peers=None, npeers=0):
-    packet = str(pack_type) + ';'
+    packet = str(pack_type.value) + ';'
     packet += str(npeers) 
     for peer in peers:
         packet += ";" + peer.encode()
