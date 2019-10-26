@@ -12,6 +12,7 @@ import struct
 import hashlib
 import socket
 import re
+sys.path.append(os.getcwd()) # TODO hack
 from comm import *
 
 '''
@@ -218,8 +219,10 @@ def get_host_info(source_port=DEFAULT_SOURCE_PORT):
 
 
 def hole_punch(sock=0, node=None, peers=None, npeers=0):
-    for peer in peers:
-        sock.sendto()
+    # packetize this nodes data
+    packet = construct_packet(peers=node, npeers=1) 
+    for peer in peers: # send it to all the peers
+        sock.sendto(packet, (peer.hostname, peer.port))
 
 def main():
     try:
@@ -240,9 +243,10 @@ def main():
         print("Sending network info to rendezvous server")
         sock.sendto(bytes(this_node.encode(), 'utf-8'), (rvous_host,DEFAULT_RVOUS_PORT))
 
-        print("Awaiting peer host info")
+        print("Awaiting peer host info") # from either rvous or another peer
         packet = sock.recv(this_node.port)
-        npeers,peers = decode_rvous_msg(packet)
+        pack_type,npeers,peers = decode_packet(packet)
+        print("Received packed of type", pack_type.name)
         print("Received address for", npeers, "peers")
         for peer in peers:
             peer.print_info()

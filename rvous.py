@@ -5,7 +5,7 @@ import os
 import re
 import random
 from itertools import repeat
-sys.path.append(os.getcwd())
+sys.path.append(os.getcwd()) # TODO hack
 from comm import *
 
 DEFAULT_RVOUS_PORT = 60000
@@ -82,7 +82,7 @@ def main():
                 
             if peers:
                 print("Sending list to node")
-                packet = construct_packet(peers=peers, npeers=len(peers))
+                packet = construct_packet(pack_type=PacketType.RVOUS_MSG, peers=peers, npeers=len(peers))
                 sock.sendto(packet, (recvd.hostname, recvd.port))
             
     except KeyboardInterrupt:
