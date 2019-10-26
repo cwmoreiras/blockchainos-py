@@ -247,7 +247,7 @@ def main():
         for peer in peers:
             peer.print_info()
 
-        hole_punch(sock=sock, node=this_node, peers=peers, npeers=npeers)
+        # hole_punch(sock=sock, node=this_node, peers=peers, npeers=npeers)
 
 
     except KeyboardInterrupt:
