@@ -6,7 +6,7 @@ import re
 import random
 from itertools import repeat
 sys.path.append(os.getcwd()) # TODO hack
-from comm import *
+import comm
 
 DEFAULT_RVOUS_PORT = 60000
 
@@ -59,29 +59,23 @@ def main():
         active = []
 
         port = process_args()
-        sock = get_udp_socket(port)
+        sock = comm.get_udp_socket(port)
 
         while True:
-            data = sock.recv(port)
-            print("*** Received Peer Matching Request")
-            recvd = extract_data(data)
-            recvd.print_info()
+            packet = comm.decode_packet(sock.recv(port))
+            print(packet)
 
-            waiting.append(recvd)
+            # waiting.append(recvd)
             looking = len(waiting)-1 # index of newest waiting peer
 
             # select up to n peers from the active peer list to send to the client
             # or as many as we have
-            print("*** Selecting Peers for this host")
-            print(len(waiting)-1, "waiting peers to choose from")
-            print(len(active), "active peers to choose from")
+
             peers = select_peers(looking=looking, active=active, waiting=waiting, n_wanted=5)
-            print("Found", len(peers), "peers")
             for peer in peers:
                 peer.print_info()
                 
             if peers:
-                print("Sending list to node")
                 packet = construct_packet(pack_type=PacketType.RVOUS_MSG, peers=peers, npeers=len(peers))
                 sock.sendto(packet, (recvd.hostname, recvd.port))
             

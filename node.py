@@ -220,9 +220,10 @@ def get_host_info(source_port=DEFAULT_SOURCE_PORT):
 
 def hole_punch(sock=0, node=None, peers=None, npeers=0):
     # packetize this nodes data
-    packet = construct_packet(peers=node, npeers=1) 
-    for peer in peers: # send it to all the peers
-        sock.sendto(packet, (peer.hostname, peer.port))
+    # packet = construct_packet(peers=node, npeers=1) 
+    # for peer in peers: # send it to all the peers
+    #     sock.sendto(packet, (peer.hostname, peer.port))
+    pass
 
 def main():
     try:
@@ -239,9 +240,11 @@ def main():
 
         sock = get_udp_socket(source_port=source_port)
 
+        packet = encode_packet(pack_type=PacketType.CLIENT_MSG, peers=this_node.encode(), npeers=1)
+
         # store the network data in Peer object
         print("Sending network info to rendezvous server")
-        sock.sendto(bytes(this_node.encode(), 'utf-8'), (rvous_host,DEFAULT_RVOUS_PORT))
+        sock.sendto(packet, (rvous_host,DEFAULT_RVOUS_PORT))
 
         print("Awaiting peer host info") # from either rvous or another peer
         packet = sock.recv(this_node.port)

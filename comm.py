@@ -9,6 +9,7 @@ class PacketType(Enum):
     INVALID = ''
     RVOUS_MSG = 'r'
     PEER_MSG = 'p'
+    CLIENT_MSG = 'c'
 
 class Peer():
     def __init__(self, topology="", hostname="", port=0):
@@ -42,11 +43,11 @@ def get_udp_socket(source_port=DEFAULT_SOURCE_PORT):
     sock.bind(("", source_port))
     return sock
 
-def extract_data(data=""):
-    top,host,cport = re.split(';', data.decode())
-    return Peer(topology=top, hostname=host, port=int(cport))
+# def extract_data(data=""):
+#     top,host,cport = re.split(';', data.decode())
+#     return Peer(topology=top, hostname=host, port=int(cport))
 
-def construct_packet(pack_type=PacketType.INVALID, peers=None, npeers=0):
+def encode_packet(pack_type=PacketType.INVALID, peers=None, npeers=0):
     packet = str(pack_type.value) + ';'
     packet += str(npeers) 
     for peer in peers:
