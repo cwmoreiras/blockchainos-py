@@ -12,24 +12,7 @@ import struct
 import hashlib
 import socket
 import re
-
-DEFAULT_RVOUS_PORT = 60000
-DEFAULT_SOURCE_PORT = 54320
-
-
-class Peer():
-    def __init__(self, topology="", hostname="", port=0):
-        self.topology=topology
-        self.hostname=hostname 
-        self.port=port
-
-    def encode(self):
-        return self.topology + ';' + self.hostname + ';' + str(self.port)
-
-    def print_info(self):
-        print("NAT Topology: ", self.topology)
-        print("IP Address  : ", self.hostname)
-        print("Port Number : ", self.port)
+from comm import *
 
 '''
 Description
@@ -193,10 +176,6 @@ class Blockchain:
         print("Blockchain Verification: Passed all tests")
         return -1
 
-def get_public_ip(source_port=54320):
-    print("Running STUN test")
-    return pynat.get_ip_info(source_port=source_port) # arbitrary public stun server
-
 def parse_args():
     argc = len(sys.argv)
     argv = sys.argv 
@@ -233,19 +212,16 @@ def create_test_chain():
 
     return bc
 
-def decode_rvous_msg(packet=None):
-    peers = []
-    npeers = int(re.split(';', packet.decode('utf-8'))[0])
-    print("npeers: ", npeers)
-    p_info = re.split(';', packet.decode('utf-8'))[1:3*npeers+1]
-    
-    for i in range(npeers):
-        peers.append(Peer(p_info[i*3], p_info[i*3+1], p_info[i*3+2]))
+def get_host_info(source_port=DEFAULT_SOURCE_PORT):
+    print("Running STUN test")
+    return pynat.get_ip_info(source_port=source_port) # arbitrary public stun server
 
-    return npeers,peers
+
+def hole_punch(sock=0, node=None, peers=None, npeers=0):
+    for peer in peers:
+        sock.sendto()
 
 def main():
-
     try:
         peer = []
         rvous_host,source_port = parse_args()
@@ -254,25 +230,24 @@ def main():
         print("source port: ", source_port)
 
         chain = create_test_chain()
-        nat_top, extern_ip, extern_port = get_public_ip(source_port=source_port) # why does this take so long?
-        this_peer = Peer(nat_top, extern_ip, extern_port)
-        this_peer.print_info()
+        nat_top, extern_ip, extern_port = get_host_info(source_port=source_port) # why does this take so long?
+        this_node = Peer(nat_top, extern_ip, extern_port)
+        this_node.print_info()
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(("0.0.0.0", source_port))
+        sock = get_udp_socket(source_port=source_port)
 
         # store the network data in Peer object
         print("Sending network info to rendezvous server")
-        sock.sendto(bytes(this_peer.encode(), 'utf-8'), (rvous_host,DEFAULT_RVOUS_PORT))
+        sock.sendto(bytes(this_node.encode(), 'utf-8'), (rvous_host,DEFAULT_RVOUS_PORT))
 
         print("Awaiting peer host info")
-        packet = sock.recv(this_peer.port)
+        packet = sock.recv(this_node.port)
         npeers,peers = decode_rvous_msg(packet)
         print("Received address for", npeers, "peers")
         for peer in peers:
             peer.print_info()
-                
+
+        hole_punch(sock=sock, node=this_node, peers=peers, npeers=npeers)
 
 
     except KeyboardInterrupt:
