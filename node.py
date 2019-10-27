@@ -14,6 +14,7 @@ import socket
 import os
 sys.path.append(os.getcwd()) # TODO hack
 import comm
+from multiprocessing.dummy import Pool as ThreadPool
 
 '''
 Description
@@ -218,11 +219,10 @@ def get_host_info(source_port=comm.DEFAULT_SOURCE_PORT):
     return pynat.get_ip_info(source_port=source_port) # arbitrary public stun server
 
 
-def hole_punch(sock=0, node=None, peers=None, npeers=0):
-    # packetize this nodes data
-    # packet = construct_packet(peers=node, npeers=1) 
-    # for peer in peers: # send it to all the peers
-    #     sock.sendto(packet, (peer.hostname, peer.port))
+def udp_handshake(sock=0, node=None, peers=None, npeers=0):
+    # udp handshake to verify addresses
+
+    # once the handshake is complete, register this address as a known peer
     pass
 
 def main():
@@ -249,14 +249,14 @@ def main():
         print("Awaiting peer host info") # from either rvous or another peer
         packet = sock.recv(this_node.port)
         print(packet)
-        
+
         pack_type,npeers,peers = comm.decode_packet(packet)
         print("Received packet of type", comm.PacketType(pack_type).name)
         print("Received address for", npeers, "peers")
-        for peer in peers:
-            peer.print_info()
-
-        # hole_punch(sock=sock, node=this_node, peers=peers, npeers=npeers)
+        
+        # one thread per peer
+        pool = ThreadPool(npeers)
+        results = pool.starmap(hole_punch, zip(itertools.repeat(sock), peers)
 
 
     except KeyboardInterrupt:
