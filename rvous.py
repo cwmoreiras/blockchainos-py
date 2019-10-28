@@ -1,3 +1,11 @@
+'''
+programmer: Carlos Williams-Moreiras
+Date: 10/23/2019
+Description: The RVOUS server maintains lists of peers on the network 
+  and provides clients with a list of peers which it can try to connect
+  to. 
+'''
+
 import sys
 import socket 
 import threading
@@ -7,9 +15,13 @@ import random
 from itertools import repeat
 import comm
 
-DEFAULT_RVOUS_PORT = 60000
+DEFAULT_RVOUS_PORT = 60000 # default port for the rendezvous service
 
-# get the desired port number from command line args
+'''
+Func: Process command line arguments
+Args: None
+Retn: The port for this service
+'''
 def process_args():
     argc = len(sys.argv)
     argv = sys.argv
@@ -21,11 +33,14 @@ def process_args():
         raise TypeError("Malformed arguments")
 
 
-
-# looking - the waiting index of the node for which we'd like to find peers
-# active - the list of active nodes
-# waiting - the list of waiting nodes
-# n_wanted - the number of peers wanted for this node
+'''
+Func: Find peers for the client from the lists of peers
+Args: looking - the waiting index of the node for which we'd like to find peers
+      active - the list of active nodes
+      waiting - the list of waiting nodes
+      n_wanted - the number of peers wanted for this node 
+Retn: a list of peers for the client to connect to
+'''
 def select_peers(looking=0, active=None, waiting=None, n_wanted=5):
     peers = []
 
@@ -46,12 +61,14 @@ def select_peers(looking=0, active=None, waiting=None, n_wanted=5):
             index = random.randrange(0, len(active))
             print("Selected active node:", index)
             peers.append(active[index])
-    
-    # now we've connected waiting peers
-    # lets make up the difference with active peers
 
     return peers
 
+'''
+Func: Server waits for requests and then responds with a list of peers
+Args: None
+Retn: None
+'''
 def main():
     try:
         waiting = []
@@ -62,6 +79,7 @@ def main():
         print("Starting server at port", port)
         sock = comm.get_udp_socket(port)
 
+        # server loop
         while True:
             pack_type,npeers,peers = comm.decode_packet(sock.recv(port))
             print("*******************************************")
@@ -71,6 +89,7 @@ def main():
             for peer in peers:
                 peer.print_info()
 
+            # this machine should only receive client packets
             if pack_type == comm.PacketType.CLIENT_MSG:
                 client = peers[0]
                 waiting.append(client)

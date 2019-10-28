@@ -4,6 +4,7 @@ Date: 10/23/2019
 Description: This is a python port of the blockchain's data structure 
   from the github project I maintain at www.github.com/cwmoreiras/blockchainos
   If you like it, please contribute to the project with a pull request!
+  TODO switch from lower level python sockets to WebSockets
 '''
 import pynat
 import sys
@@ -12,7 +13,7 @@ import struct
 import hashlib
 import socket
 import os
-sys.path.append(os.getcwd()) # TODO hack
+sys.path.append(os.getcwd()) # TODO this is a hack
 import comm
 from multiprocessing.dummy import Pool as ThreadPool
 
@@ -20,7 +21,13 @@ from multiprocessing.dummy import Pool as ThreadPool
 Description
   Definition of _Block, an implementation of a Blockchain block. This class can
   be used to store the data necessary for creation of a block. Only the blockchain
-  should be interacting directly with objects of this class. If 
+  should be interacting directly with objects of this class. 
+  prevhash - the hash of the previous block
+  hash - the current block's hash
+  index - the index of this block
+  timestamp - the timestamp (seconds since the epoch)
+  record - a string given by the caller
+
 '''
 class _Block:
     prevhash = None  # the hash of the previous block
@@ -52,7 +59,6 @@ class _Block:
         self.timestamp = int(time.time())
 
         self.hash = self.sha_hash()
-        poop = struct
 
     '''
     Func: Calculates the block hash
@@ -82,14 +88,13 @@ class _Block:
   as pushed by the caller
 '''
 class Blockchain:
-    bc = []
-
     '''
     Func: Constructs the root block and adds it to the chain
     Args: None
     Retn: None
     '''
     def __init__(self):
+        self.bc = []
         # root record is hardcoded
         record = "first record"
         self.bc.append(_Block(prevhash=0, index=0, record=record))
@@ -178,6 +183,12 @@ class Blockchain:
         print("Blockchain Verification: Passed all tests")
         return -1
 
+'''
+Func: parse command line arguments
+      TODO use ArgumentParser
+Args: None
+Retn: None
+'''
 def parse_args():
     argc = len(sys.argv)
     argv = sys.argv 
@@ -194,7 +205,11 @@ def parse_args():
     elif argc == 3:
         return argv[1].strip(),int(argv[2].strip())
             
-
+'''
+Func: Creates a blockchain with two blocks, just as a minimal test
+Args: None
+Retn: The test blockchain
+'''
 def create_test_chain():
     print("Constructing blockchain")
     bc = Blockchain()
@@ -214,17 +229,31 @@ def create_test_chain():
 
     return bc
 
+'''
+Func: Use the PyNat package to find out the public IP of this host
+Args: source_port: the port we're going to use for p2p communications
+Retn: A tuple containing NAT type, external IP, and external port
+      in that order
+'''
 def get_host_info(source_port=comm.DEFAULT_SOURCE_PORT):
     print("Running STUN test")
     return pynat.get_ip_info(source_port=source_port) # arbitrary public stun server
 
 
 def udp_handshake(sock=0, node=None, peers=None, npeers=0):
+    # TODO
     # udp handshake to verify addresses
 
     # once the handshake is complete, register this address as a known peer
     pass
 
+'''
+Func: Create a test blockchain, get the external IP address of this host,
+      TODO connect to a remote host, address provided by rendezvous server
+Args: argv[1] - the hostname of the rendezvous server
+      arvg[2] - the port on which to attempt to connect
+Retn: None
+'''
 def main():
     try:
         peer = []
@@ -235,10 +264,10 @@ def main():
 
         chain = create_test_chain()
         nat_top, extern_ip, extern_port = get_host_info(source_port=source_port) # why does this take so long?
-        this_node = comm.Peer(nat_top, extern_ip, extern_port)
+        this_node = comm.Peer(nat_top, extern_ip, extern_port) # construct a peer object
         this_node.print_info()
 
-        sock = comm.get_udp_socket(source_port=source_port)
+        sock = comm.get_udp_socket(source_port=source_port) # construct a bound socket
 
         packet = comm.encode_packet(pack_type=comm.PacketType.CLIENT_MSG, peers=[this_node], npeers=1)
 
@@ -255,8 +284,8 @@ def main():
         print("Received address for", npeers, "peers")
         
         # one thread per peer
-        pool = ThreadPool(npeers)
-        results = pool.starmap(hole_punch, zip(itertools.repeat(sock), peers)
+        # pool = ThreadPool(npeers)
+        # results = pool.starmap(hole_punch, zip(itertools.repeat(sock), peers)
 
 
     except KeyboardInterrupt:
